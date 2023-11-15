@@ -15,7 +15,7 @@ class socket{
 
         //WEBSOCKETS
         io.on('connection', (socket) => {
-            const db = getFirestore();
+            // const db = getFirestore();
 
             console.log('Usuario conectado');
             // socket.on('disconnect', () => { let id = socket.user_data ? socket.user_data.user_id : ''; leave({user_id: id}, io)});

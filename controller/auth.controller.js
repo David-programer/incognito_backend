@@ -1,13 +1,13 @@
 const bcrypt = require('bcrypt');
 const jwt = require("jsonwebtoken");
 const { validationResult } = require('express-validator');
+// import { collection, query} from "firebase/firestore";
 // const { initializeApp, applicationDefault, cert } = require('firebase-admin/app');
 const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/firestore');
 const db = getFirestore();
 
 async function registerUser(req, res, next){
   try {
-    
     const errors = validationResult(req);
     if (!errors.isEmpty()) { return res.status(422).json({successful: false, errors: errors.array() })}
 
@@ -37,51 +37,39 @@ async function registerUser(req, res, next){
     res.send({ successful: true, data: userJson } );
   } catch (error) {
     console.log(error)
-    res.send({ successful: false, error: e, message: e } )
+    res.send({ successful: false, error: error, message: e } )
   }
 }
 
 async function login(data, callback, io) {
-  const userRef = db.collection('users');
-
-  console.log(data);
-  // const snapshot = await userRef.where('nickname', '==', data.user).get();
-
-  // if (snapshot.empty) {
-  //   res.send({successful: false, error: 'create:usernotfound'} );
-  // }  
-
-  // const arrar =[];
-  // snapshot.forEach(doc => {
-  //     const data = doc.data();
-  //     data.id = doc.id
-  //     arrar.push(data);
-  // });
-
-  // const usuario = arrar[0];
+  const userDoc = db.collection('users');
+  const querySnapshot  = await userDoc.where('nickname', '==', data.nickname).get();
   
-  // new Promise(async function (myResolve, myReject) {
-  //     if (await bcrypt.compare(req.body.pass, usuario.pass)) {
-  //       res.send(
-  //             {
-  //                 successful: true, data: {
-  //                     token: jwt.sign(
-  //                         { name: usuario.nombre_completo, id: usuario.id },
-  //                         process.env.SAL,
-  //                         { expiresIn: "24h", }
-  //                     ),
-  //                     user:{
-  //                         id: usuario.id,
-  //                         nombre: usuario.nombre_completo,
-  //                         correo: usuario.email
-  //                     }
-  //                 }
-  //             }
-  //         )
-  //     }else {
-  //       res.send( { successful: false, error: "pass invalido" } )
-  //     }
-  // });
+  if (querySnapshot.empty) {
+    return callback({successful: false, error: 'create:usernotfound'});
+  }  
+
+  const processData = querySnapshot.docs[0].data();
+
+  if (await bcrypt.compare(data.password, processData.password)) {
+    const token = jwt.sign(
+      { nickname: data.nickname },
+      process.env.SAL,
+      { expiresIn: "24h", }
+    );
+
+    return callback({
+      successful: true, 
+      data: {...processData, token}, 
+      message: 'welcome'
+    });
+  } else {
+    return callback({
+      successful: false, 
+      data: processData, 
+      error: "pass invalid",
+    });
+  }
 }
 
 module.exports = {
